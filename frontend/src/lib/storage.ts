@@ -1,6 +1,7 @@
-/** Returns the current logged-in user's email (lowercase) */
+/** Returns the current tab's logged-in user email (sessionStorage first, then localStorage fallback) */
 export function currentEmail(): string {
-  return (localStorage.getItem('user_email') || 'guest').toLowerCase();
+  const e = sessionStorage.getItem('cwi_email') || localStorage.getItem('user_email') || 'guest';
+  return e.toLowerCase();
 }
 
 /** Namespaced key: e.g. "purchased_listings" → "cwi:user@x.com:purchased_listings" */

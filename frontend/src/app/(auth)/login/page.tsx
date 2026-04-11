@@ -76,6 +76,7 @@ function LoginForm() {
       try {
         await register({ email, password });
         const res = await login({ email, password });
+        sessionStorage.setItem('cwi_token', res.data.access_token);
         localStorage.setItem('access_token', res.data.access_token);
       } catch { /* offline — local registry is source of truth */ }
       router.push(ROLE_ROUTES[role] ?? '/dashboard');
@@ -105,6 +106,7 @@ function LoginForm() {
       // Try API login (non-blocking)
       try {
         const res = await login({ email, password });
+        sessionStorage.setItem('cwi_token', res.data.access_token);
         localStorage.setItem('access_token', res.data.access_token);
       } catch { /* offline — proceed */ }
       router.push(ROLE_ROUTES[user.role] ?? '/dashboard');
