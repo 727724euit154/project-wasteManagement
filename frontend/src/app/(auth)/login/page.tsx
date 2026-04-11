@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { login, register } from '@/services/api';
 import Link from 'next/link';
 import { ArrowRight, Recycle, Building2, ShoppingBag, Truck, Factory } from 'lucide-react';
+import { useUser } from '@/lib/UserContext';
 
 const ROLES = [
   { value: 'producer', label: 'Producer', desc: 'List demolition materials', icon: <Building2 className="h-4 w-4" /> },
@@ -34,6 +35,7 @@ function saveUser(u: LocalUser) {
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
+  const { setUser } = useUser();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -69,8 +71,7 @@ function LoginForm() {
       }
       // Save locally first
       saveUser({ email, password, role });
-      localStorage.setItem('user_role', role);
-      localStorage.setItem('user_email', email);
+      setUser(role, email);
       // Try API registration (non-blocking)
       try {
         await register({ email, password });
@@ -100,8 +101,7 @@ function LoginForm() {
         return;
       }
 
-      localStorage.setItem('user_role', user.role);
-      localStorage.setItem('user_email', user.email);
+      setUser(user.role, user.email);
       // Try API login (non-blocking)
       try {
         const res = await login({ email, password });

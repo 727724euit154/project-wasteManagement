@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useUser } from '@/lib/UserContext';
 import { Camera, LayoutDashboard, Store, Truck, Leaf, PlusCircle, ShoppingBag, Package } from 'lucide-react';
 
 const NAV: Record<string, { href: string; label: string; icon: React.ReactNode }[]> = {
@@ -31,12 +31,7 @@ const NAV: Record<string, { href: string; label: string; icon: React.ReactNode }
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [role, setRole] = useState('producer');
-
-  useEffect(() => {
-    setRole(localStorage.getItem('user_role') || 'producer');
-  }, []);
-
+  const { role } = useUser();
   const links = NAV[role] ?? NAV.producer;
 
   return (

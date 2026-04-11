@@ -1,7 +1,7 @@
 "use client";
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@/lib/UserContext';
 import { Recycle } from 'lucide-react';
 
 const ROLE_HOME: Record<string, string> = {
@@ -30,22 +30,10 @@ const ROLE_COLORS: Record<string, { bg: string; color: string; border: string }>
 
 export default function Navbar() {
   const router = useRouter();
-  const pathname = usePathname();
-  const [role, setRole] = useState('');
-  const [email, setEmail] = useState('');
-
-  // Re-read role on every route change so badge is always accurate
-  useEffect(() => {
-    const r = localStorage.getItem('user_role') || '';
-    const e = localStorage.getItem('user_email') || '';
-    setRole(r);
-    setEmail(e);
-  }, [pathname]);
+  const { role, email, clearUser } = useUser();
 
   const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user_role');
-    localStorage.removeItem('user_email');
+    clearUser();
     router.push('/');
   };
 
@@ -75,28 +63,22 @@ export default function Navbar() {
         <Link href="/marketplace" className="text-sm font-medium text-zinc-400 hover:text-white transition">
           Marketplace
         </Link>
-
         {isProducer && (
           <>
             <Link href="/create-listing" className="text-sm font-medium text-zinc-400 hover:text-white transition">New Listing</Link>
             <Link href="/dashboard/impact" className="text-sm font-medium text-zinc-400 hover:text-white transition">ESG</Link>
           </>
         )}
-
         {isConsumer && (
           <Link href="/consumer" className="text-sm font-medium text-zinc-400 hover:text-white transition">My Purchases</Link>
         )}
-
         {isDriver && (
           <Link href="/driver" className="text-sm font-medium text-zinc-400 hover:text-white transition">My Jobs</Link>
         )}
-
         {isRecycler && (
           <Link href="/recycler/marketplace" className="text-sm font-medium text-zinc-400 hover:text-white transition">Procurement</Link>
         )}
-
         {email && <span className="text-xs text-zinc-600 hidden md:block">{email}</span>}
-
         <button onClick={handleLogout} className="cwi-btn-primary px-4 py-2 rounded-full text-sm font-semibold">
           Log Out
         </button>
