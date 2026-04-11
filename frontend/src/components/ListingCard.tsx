@@ -20,8 +20,12 @@ function getImage(title: string) {
   return key ? MATERIAL_IMAGES[key] : 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=400';
 }
 
+const BUYER_ROLES = ['consumer', 'buyer', 'recycler'];
+
 export default function ListingCard({ listing }: { listing: any }) {
   const [status, setStatus] = useState(listing.status);
+  const role = typeof window !== 'undefined' ? localStorage.getItem('user_role') || '' : '';
+  const canBuy = BUYER_ROLES.includes(role);
 
   const markSold = () => {
     const soldAt = new Date().toISOString();
@@ -113,11 +117,15 @@ export default function ListingCard({ listing }: { listing: any }) {
               style={{ background: 'rgba(255,255,255,0.05)' }}>
               Details
             </Link>
-            {!isSold && listing.price && (
+            {!isSold && listing.price && canBuy && (
               <button onClick={markSold}
                 className="cwi-btn-primary px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
                 Buy <ArrowRight className="h-3 w-3" />
               </button>
+            )}
+            {!isSold && listing.price && !canBuy && (
+              <span className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-600"
+                style={{ background: 'rgba(255,255,255,0.04)' }}>View Only</span>
             )}
             {isSold && (
               <span className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-600"

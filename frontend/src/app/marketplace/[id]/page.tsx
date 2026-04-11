@@ -14,6 +14,13 @@ export default function ListingDetailPage() {
   const [purchased, setPurchased] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [address, setAddress] = useState({ street: '', city: '', state: '', zip: '' });
+  const [role, setRole] = useState('');
+
+  useEffect(() => {
+    setRole(localStorage.getItem('user_role') || '');
+  }, []);
+
+  const canBuy = ['consumer', 'buyer', 'recycler'].includes(role);
 
   useEffect(() => {
     // Check user's own listings first, then global listings
@@ -205,10 +212,16 @@ export default function ListingDetailPage() {
               <button onClick={() => router.push('/marketplace')} className="flex-1 cwi-btn-ghost py-3 rounded-xl font-medium">
                 Back to Marketplace
               </button>
-              {listing.price && !purchased && (
+              {listing.price && !purchased && canBuy && (
                 <button onClick={() => setShowAddressModal(true)} className="flex-1 cwi-btn-primary py-3 rounded-xl font-bold">
                   Purchase Now
                 </button>
+              )}
+              {listing.price && !purchased && !canBuy && (
+                <div className="flex-1 text-center py-3 rounded-xl font-medium text-zinc-500 text-sm"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  Only consumers can purchase listings
+                </div>
               )}
               {purchased && (
                 <span className="flex-1 text-center py-3 rounded-xl font-medium text-zinc-500" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
