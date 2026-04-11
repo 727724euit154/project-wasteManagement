@@ -1,109 +1,129 @@
-import { useState } from 'react';
-import { purchaseListing } from '@/services/api';
 import Link from 'next/link';
+import { useState } from 'react';
+import { getStore, setStore } from '@/lib/storage';
+import { Package, ArrowRight } from 'lucide-react';
 
-const getMaterialImage = (title: string) => {
-  const lowerTitle = title.toLowerCase();
-  if (lowerTitle.includes('metal waste') || lowerTitle.includes('metal')) {
-    return 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('glass waste') || lowerTitle.includes('glass')) {
-    return 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('wood waste') || lowerTitle.includes('wood')) {
-    return 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('concrete waste') || lowerTitle.includes('concrete')) {
-    return 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('brick waste') || lowerTitle.includes('brick')) {
-    return 'https://images.unsplash.com/photo-1590845947670-c009801ffa74?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('plastic waste') || lowerTitle.includes('plastic')) {
-    return 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('asphalt waste') || lowerTitle.includes('asphalt')) {
-    return 'https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('gypsum waste') || lowerTitle.includes('gypsum') || lowerTitle.includes('drywall')) {
-    return 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('insulation waste') || lowerTitle.includes('insulation')) {
-    return 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('ceramic waste') || lowerTitle.includes('ceramic')) {
-    return 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else if (lowerTitle.includes('rubber waste') || lowerTitle.includes('rubber')) {
-    return 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  } else {
-    return 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=400&h=300&ixlib=rb-4.0.3';
-  }
+const MATERIAL_IMAGES: Record<string, string> = {
+  metal:      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=80&w=400',
+  glass:      'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?auto=format&fit=crop&q=80&w=400',
+  wood:       'https://images.unsplash.com/photo-1518709268805-4e9042af2176?auto=format&fit=crop&q=80&w=400',
+  concrete:   'https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=400',
+  brick:      'https://images.unsplash.com/photo-1590845947670-c009801ffa74?auto=format&fit=crop&q=80&w=400',
+  plastic:    'https://images.unsplash.com/photo-1578662996442-48f60103fc96?auto=format&fit=crop&q=80&w=400',
+  asphalt:    'https://images.unsplash.com/photo-1584464491033-06628f3a6b7b?auto=format&fit=crop&q=80&w=400',
+  ceramic:    'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&q=80&w=400',
 };
+
+function getImage(title: string) {
+  const t = title.toLowerCase();
+  const key = Object.keys(MATERIAL_IMAGES).find(k => t.includes(k));
+  return key ? MATERIAL_IMAGES[key] : 'https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=400';
+}
 
 export default function ListingCard({ listing }: { listing: any }) {
   const [status, setStatus] = useState(listing.status);
 
-  const handleBuy = async () => {
-    if (status === 'sold') return;
-    try {
-      await purchaseListing(listing.id, listing.price).catch(() => {});
-      // Mark sold in user_listings
-      const all: any[] = JSON.parse(localStorage.getItem('user_listings') || '[]');
-      const updated = all.map(l => l.id === listing.id ? { ...l, status: 'sold' } : l);
-      localStorage.setItem('user_listings', JSON.stringify(updated));
-      // Track in purchased_listings
-      const purchased: any[] = JSON.parse(localStorage.getItem('purchased_listings') || '[]');
-      purchased.push({ ...listing, status: 'sold', purchased_at: new Date().toISOString() });
-      localStorage.setItem('purchased_listings', JSON.stringify(purchased));
-      setStatus('sold');
-    } catch (err) {
-      console.error(err);
+  const markSold = () => {
+    const soldAt = new Date().toISOString();
+
+    // Update global all_listings with sold_at timestamp
+    const all: any[] = JSON.parse(localStorage.getItem('all_listings') || '[]');
+    localStorage.setItem('all_listings', JSON.stringify(
+      all.map(l => l.id === listing.id ? { ...l, status: 'sold', sold_at: soldAt } : l)
+    ));
+
+    // Update producer's scoped listings
+    const userListings = getStore<any[]>('user_listings', []);
+    setStore('user_listings', userListings.map(l => l.id === listing.id ? { ...l, status: 'sold' } : l));
+
+    // Save to buyer's scoped purchased_listings
+    const prev = getStore<any[]>('purchased_listings', []);
+    prev.push({ ...listing, status: 'sold', purchased_at: soldAt, sold_at: soldAt });
+    setStore('purchased_listings', prev);
+
+    // Add to global logistics jobs
+    const jobs: any[] = JSON.parse(localStorage.getItem('logistics_jobs') || '[]');
+    if (!jobs.some(j => j.listing_id === listing.id)) {
+      jobs.push({
+        id: crypto.randomUUID(),
+        listing_id: listing.id,
+        listing_title: listing.title,
+        material: listing.materials?.[0]?.type ?? 'Construction Waste',
+        material_purity: listing.materials?.[0]?.percentage ?? null,
+        weight_kg: listing.weight_kg ?? null,
+        company_name: listing.company_name ?? null,
+        contact_number: listing.contact_number ?? null,
+        price: listing.price,
+        status: 'AVAILABLE',
+        payment_offered_usd: Math.round((parseFloat(listing.price) || 50) * 0.15),
+        pickup: { lat: listing.latitude ?? 40.7128, lng: listing.longitude ?? -74.006 },
+        delivery_address: null,
+        purchased_at: soldAt,
+      });
+      localStorage.setItem('logistics_jobs', JSON.stringify(jobs));
     }
+
+    setStatus('sold');
   };
 
+  const isSold = status === 'sold';
+
   return (
-    <div className="border rounded-2xl p-4 shadow-sm hover:shadow-lg transition bg-white group cursor-pointer">
-      <div className="w-full h-40 bg-gray-100 rounded-xl mb-4 flex items-center justify-center overflow-hidden relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent z-10"></div>
-        {/* Using standard img tag without external Next.js domains to prevent errors out of box */}
-        <img 
-          src={listing.image || getMaterialImage(listing.title)} 
-          alt="Waste Resource" 
-          className="object-cover w-full h-full group-hover:scale-105 transition duration-700" 
-        />
+    <div className={`cwi-card rounded-2xl overflow-hidden group transition-all ${isSold ? 'opacity-60' : ''}`}>
+      {/* Image */}
+      <div className="h-40 overflow-hidden relative" style={{ background: 'rgba(255,255,255,0.03)' }}>
+        <img src={listing.image || getImage(listing.title)} alt={listing.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition duration-500 opacity-80" />
+        {isSold && (
+          <div className="absolute inset-0 flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.5)' }}>
+            <span className="text-white font-black text-lg tracking-widest uppercase px-4 py-2 rounded-xl"
+              style={{ background: 'rgba(239,68,68,0.8)', border: '1px solid rgba(239,68,68,0.5)' }}>
+              SOLD
+            </span>
+          </div>
+        )}
+        {listing.materials?.[0]?.percentage && !isSold && (
+          <div className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold"
+            style={{ background: 'rgba(16,185,129,0.2)', color: '#34d399', border: '1px solid rgba(16,185,129,0.3)' }}>
+            {listing.materials[0].percentage}% pure
+          </div>
+        )}
       </div>
-      <h3 className="font-semibold text-lg line-clamp-1">{listing.title}</h3>
-      <p className="text-gray-500 text-sm mt-1 mb-4 line-clamp-2 min-h-[40px]">{listing.description}</p>
-      
-      {listing.price && (
-        <div className="mb-3">
-          <span className="text-2xl font-bold text-emerald-600">${listing.price}</span>
-        </div>
-      )}
-      
-      {listing.materials && listing.materials.length > 0 && (
-        <div className="mb-3">
-          <span className="inline-block bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded-full">
-            {listing.materials[0].type} • {listing.materials[0].percentage}% Pure
+
+      <div className="p-4">
+        <h3 className="font-bold text-white text-sm leading-tight truncate mb-1">{listing.title}</h3>
+        <p className="text-xs text-zinc-500 line-clamp-2 mb-3">{listing.description}</p>
+
+        {listing.materials?.[0]?.type && (
+          <div className="flex items-center gap-1.5 mb-3">
+            <Package className="h-3 w-3 text-emerald-400 shrink-0" />
+            <span className="text-xs text-zinc-400 capitalize">{listing.materials[0].type}</span>
+            {listing.weight_kg && <span className="text-xs text-zinc-600">· {listing.weight_kg} kg</span>}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+          <span className="text-lg font-black text-emerald-400">
+            {listing.price ? `$${parseFloat(listing.price).toLocaleString()}` : '—'}
           </span>
-        </div>
-      )}
-      
-      <div className="flex border-t pt-3 justify-between items-center text-sm">
-        <div className="flex flex-col">
-          <span className="text-xs text-gray-400">Status</span>
-          <span className={`font-semibold uppercase tracking-wider text-[11px] ${
-            status === 'sold' ? 'text-gray-400' : 'text-emerald-600'
-          }`}>{status}</span>
-        </div>
-        <div className="flex gap-2">
-          <Link href={`/marketplace/${listing.id}`}>
-            <button className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg font-medium hover:bg-emerald-100 transition text-xs">
+          <div className="flex gap-2">
+            <Link href={`/marketplace/${listing.id}`}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition"
+              style={{ background: 'rgba(255,255,255,0.05)' }}>
               Details
-            </button>
-          </Link>
-          {listing.price && status !== 'sold' && (
-            <button 
-              onClick={handleBuy}
-              className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-emerald-700 transition text-xs"
-            >
-              Buy Now
-            </button>
-          )}
-          {status === 'sold' && (
-            <span className="bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg text-xs font-medium">Sold</span>
-          )}
+            </Link>
+            {!isSold && listing.price && (
+              <button onClick={markSold}
+                className="cwi-btn-primary px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
+                Buy <ArrowRight className="h-3 w-3" />
+              </button>
+            )}
+            {isSold && (
+              <span className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-600"
+                style={{ background: 'rgba(255,255,255,0.04)' }}>Sold</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -22,49 +22,60 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="flex-1 flex flex-col items-center justify-center text-center px-6 pt-32 pb-20 relative">
-        {/* Glow blobs */}
-        <div className="absolute top-20 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-10 right-1/4 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="cwi-badge mb-6">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Platform Online · Circular Economy Network
+      {/* Hero — full-bleed construction site image */}
+      <section className="relative flex flex-col items-center justify-center text-center px-6 pt-32 pb-24 min-h-[92vh] overflow-hidden">
+        {/* Background image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&q=80&w=1600"
+            alt="Construction site"
+            className="w-full h-full object-cover"
+          />
+          {/* Dark overlay */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(10,10,15,0.75) 0%, rgba(10,10,15,0.6) 50%, rgba(10,10,15,0.92) 100%)' }} />
+          {/* Emerald tint */}
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 30%, rgba(16,185,129,0.12) 0%, transparent 70%)' }} />
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-6 leading-[1.05] max-w-4xl">
-          Turn Construction<br />
-          Waste Into{' '}
-          <span className="cwi-gradient-text">Value.</span>
-        </h1>
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="cwi-badge mb-6">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            Platform Online · Circular Economy Network
+          </div>
 
-        <p className="text-lg text-zinc-400 max-w-xl mb-10 leading-relaxed">
-          AI-powered marketplace connecting demolition sites, recyclers, and drivers — closing the loop on construction waste with real-time ESG tracking.
-        </p>
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-6 leading-[1.05] max-w-4xl">
+            Turn Construction<br />
+            Waste Into{' '}
+            <span className="cwi-gradient-text">Value.</span>
+          </h1>
 
-        <div className="flex items-center gap-4 flex-wrap justify-center">
-          <Link href="/login?mode=register" className="cwi-btn-primary px-8 py-3.5 rounded-2xl font-bold text-base flex items-center gap-2 group">
-            Get Started Free
-            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
-          <Link href="/login" className="cwi-btn-ghost px-8 py-3.5 rounded-2xl font-bold text-base">
-            Sign In
-          </Link>
-        </div>
+          <p className="text-lg text-zinc-300 max-w-xl mb-10 leading-relaxed">
+            AI-powered marketplace connecting demolition sites, recyclers, and drivers — closing the loop on construction waste with real-time ESG tracking.
+          </p>
 
-        {/* Stats row */}
-        <div className="mt-16 grid grid-cols-3 gap-8 max-w-lg w-full">
-          {[
-            { value: '12,400+', label: 'Tonnes Diverted' },
-            { value: '340+', label: 'Active Listings' },
-            { value: '98%', label: 'ESG Compliance' },
-          ].map(s => (
-            <div key={s.label} className="text-center">
-              <div className="text-2xl font-black text-white">{s.value}</div>
-              <div className="text-xs text-zinc-500 mt-1 font-medium">{s.label}</div>
-            </div>
-          ))}
+          <div className="flex items-center gap-4 flex-wrap justify-center">
+            <Link href="/login?mode=register" className="cwi-btn-primary px-8 py-3.5 rounded-2xl font-bold text-base flex items-center gap-2 group">
+              Get Started Free
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link href="/login" className="cwi-btn-ghost px-8 py-3.5 rounded-2xl font-bold text-base">
+              Sign In
+            </Link>
+          </div>
+
+          {/* Stats row */}
+          <div className="mt-16 grid grid-cols-3 gap-8 max-w-lg w-full">
+            {[
+              { value: '12,400+', label: 'Tonnes Diverted' },
+              { value: '340+', label: 'Active Listings' },
+              { value: '98%', label: 'ESG Compliance' },
+            ].map(s => (
+              <div key={s.label} className="text-center">
+                <div className="text-2xl font-black text-white">{s.value}</div>
+                <div className="text-xs text-zinc-400 mt-1 font-medium">{s.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
