@@ -1,7 +1,7 @@
+"use client";
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { getStore, setStore } from '@/lib/storage';
-import { Package, ArrowRight } from 'lucide-react';
+import { useUser } from '@/lib/UserContext';
+import { Package } from 'lucide-react';
 
 const MATERIAL_IMAGES: Record<string, string> = {
   metal:      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?auto=format&fit=crop&q=80&w=400',
@@ -23,64 +23,21 @@ function getImage(title: string) {
 const BUYER_ROLES = ['consumer', 'buyer', 'recycler'];
 
 export default function ListingCard({ listing }: { listing: any }) {
-  const [status, setStatus] = useState(listing.status);
-  const [canBuy, setCanBuy] = useState(false);
-
-  useEffect(() => {
-    const role = localStorage.getItem('user_role') || '';
-    setCanBuy(BUYER_ROLES.includes(role));
-  }, []);
-
-  const markSold = () => {
-    const soldAt = new Date().toISOString();
-
-    // Update global all_listings with sold_at timestamp
-    const all: any[] = JSON.parse(localStorage.getItem('all_listings') || '[]');
-    localStorage.setItem('all_listings', JSON.stringify(
-      all.map(l => l.id === listing.id ? { ...l, status: 'sold', sold_at: soldAt } : l)
-    ));
-
-    // Save to buyer's scoped purchased_listings
-    const prev = getStore<any[]>('purchased_listings', []);
-    prev.push({ ...listing, status: 'sold', purchased_at: soldAt, sold_at: soldAt });
-    setStore('purchased_listings', prev);
-
-    // Add to global logistics jobs
-    const jobs: any[] = JSON.parse(localStorage.getItem('logistics_jobs') || '[]');
-    if (!jobs.some(j => j.listing_id === listing.id)) {
-      jobs.push({
-        id: crypto.randomUUID(),
-        listing_id: listing.id,
-        listing_title: listing.title,
-        material: listing.materials?.[0]?.type ?? 'Construction Waste',
-        material_purity: listing.materials?.[0]?.percentage ?? null,
-        weight_kg: listing.weight_kg ?? null,
-        company_name: listing.company_name ?? null,
-        contact_number: listing.contact_number ?? null,
-        price: listing.price,
-        status: 'AVAILABLE',
-        payment_offered_usd: Math.round((parseFloat(listing.price) || 50) * 0.15),
-        pickup: { lat: listing.latitude ?? 40.7128, lng: listing.longitude ?? -74.006 },
-        delivery_address: null,
-        purchased_at: soldAt,
-      });
-      localStorage.setItem('logistics_jobs', JSON.stringify(jobs));
-    }
-
-    setStatus('sold');
-  };
-
-  const isSold = status === 'sold';
+  const { role } = useUser();
+  const canBuy = BUYER_ROLES.includes(role);
+  const isSold = listing.status === 'sold';
 
   return (
     <div className={`cwi-card rounded-2xl overflow-hidden group transition-all ${isSold ? 'opacity-60' : ''}`}>
       {/* Image */}
       <div className="h-40 overflow-hidden relative" style={{ background: 'rgba(255,255,255,0.03)' }}>
-        <img src={listing.image || getImage(listing.title)} alt={listing.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition duration-500 opacity-80" />
+        <img
+          src={listing.image || getImage(listing.title)}
+          alt={listing.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition duration-500 opacity-80"
+        />
         {isSold && (
-          <div className="absolute inset-0 flex items-center justify-center"
-            style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
             <span className="text-white font-black text-lg tracking-widest uppercase px-4 py-2 rounded-xl"
               style={{ background: 'rgba(239,68,68,0.8)', border: '1px solid rgba(239,68,68,0.5)' }}>
               SOLD
@@ -112,22 +69,20 @@ export default function ListingCard({ listing }: { listing: any }) {
             {listing.price ? `$${parseFloat(listing.price).toLocaleString()}` : '—'}
           </span>
           <div className="flex gap-2">
-            <Link href={`/marketplace/${listing.id}`}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition"
-              style={{ background: 'rgba(255,255,255,0.05)' }}>
-              Details
-            </Link>
-            {!isSold && listing.price && canBuy && (
-              <button onClick={markSold}
-                className="cwi-btn-primary px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
-                Buy <ArrowRight className="h-3 w-3" />
-              </button>
-            )}
-            {!isSold && listing.price && !canBuy && (
-              <span className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-600"
-                style={{ background: 'rgba(255,255,255,0.04)' }}>View Only</span>
-            )}
-            {isSold && (
+            {!isSold && canBuy ? (
+              /* Consumer/Recycler: go to detail page where address modal + Purchase Now lives */
+              <Link href={`/marketplace/${listing.id}`}
+                className="cwi-btn-primary px-3 py-1.5 rounded-lg text-xs font-bold">
+                Purchase Now
+              </Link>
+            ) : !isSold ? (
+              /* Producer/Driver: view only */
+              <Link href={`/marketplace/${listing.id}`}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition"
+                style={{ background: 'rgba(255,255,255,0.05)' }}>
+                View Details
+              </Link>
+            ) : (
               <span className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-600"
                 style={{ background: 'rgba(255,255,255,0.04)' }}>Sold</span>
             )}

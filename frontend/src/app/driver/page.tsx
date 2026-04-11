@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { useRouter } from 'next/navigation';
 import { getStore, setStore, currentEmail } from '@/lib/storage';
+import { useUser } from '@/lib/UserContext';
 import { Truck, Package, MapPin, CheckCircle, DollarSign, Clock, ArrowRight, Building2 } from 'lucide-react';
 
 export default function DriverDashboard() {
