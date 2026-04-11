@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: cwi_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cwi_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cwi_password}
+      POSTGRES_DB: ${POSTGRES_DB:-cwi_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cwi_user} -d ${POSTGRES_DB:-cwi_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cwi_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-cwi_user}:${POSTGRES_PASSWORD:-cwi_password}@db:5432/${POSTGRES_DB:-cwi_db}
+      - AI_SERVICE_URL=http://ai_service:8001
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ai_service:
+    build:
+      context: ./ai_services
+      dockerfile: Dockerfile
+    container_name: cwi_ai_service
+    restart: always
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./ai_services:/app
+    environment:
+      - MODEL_ENV=development
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: cwi_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_MAPBOX_TOKEN=${MAPBOX_TOKEN}
+
+volumes:
+  postgres_data:
