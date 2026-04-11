@@ -36,8 +36,14 @@ class Listing(Base):
     contractor_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), index=True)
     title = Column(String(255), nullable=False)
     description = Column(Text)
-    location = Column(Geometry('POINT', srid=4326), nullable=False)
+    location = Column(Geometry('POINT', srid=4326), nullable=True)
+    latitude = Column(Numeric(10, 6), nullable=True)
+    longitude = Column(Numeric(10, 6), nullable=True)
     status = Column(String(50), default="available", index=True)
+    price = Column(Numeric(15, 2), nullable=True)
+    weight_kg = Column(Numeric(15, 2), nullable=True)
+    company_name = Column(String(255), nullable=True)
+    contact_number = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     contractor = relationship("User", foreign_keys=[contractor_id])
 
@@ -75,6 +81,7 @@ class Transaction(Base):
     buyer_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), index=True)
     amount = Column(Numeric(15, 2), nullable=False)
     status = Column(String(50), default="completed")
+    delivery_address = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class LogisticsRequest(Base):

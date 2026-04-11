@@ -2,16 +2,30 @@
 import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
-import { getStore } from '@/lib/storage';
+import { getStore, setStore } from '@/lib/storage';
 import { totalCarbonSavedKg, totalEnergySavedKwh, totalWeightKg } from '@/lib/carbonCalc';
-import { ShoppingBag, Wind, Zap, Store, ArrowRight, MapPin, Leaf } from 'lucide-react';
+import { api } from '@/services/api';
+import { ShoppingBag, Wind, Zap, Store, ArrowRight, MapPin, Leaf, Trash2 } from 'lucide-react';
 
 export default function ConsumerDashboard() {
   const [purchased, setPurchased] = useState<any[]>([]);
 
-  useEffect(() => {
-    setPurchased(getStore<any[]>('purchased_listings', []));
-  }, []);
+  useEffect(() => { setPurchased(getStore<any[]>('purchased_listings', [])); }, []);
+
+  const handleCancel = (id: string) => {
+    if (!confirm('Cancel this purchase?')) return;
+    const updated = purchased.filter(l => l.id !== id);
+    setStore('purchased_listings', updated);
+    // Restore listing to available in global store
+    const all: any[] = JSON.parse(localStorage.getItem('all_listings') || '[]');
+    localStorage.setItem('all_listings', JSON.stringify(all.map(l => l.id === id ? { ...l, status: 'available' } : l)));
+    // Remove from logistics jobs
+    const jobs: any[] = JSON.parse(localStorage.getItem('logistics_jobs') || '[]');
+    localStorage.setItem('logistics_jobs', JSON.stringify(jobs.filter(j => j.listing_id !== id)));
+    setPurchased(updated);
+    const token = localStorage.getItem('access_token');
+    if (token) api.delete(`/transactions/${id}`).catch(() => {});
+  };
 
   const weightKg = totalWeightKg(purchased);
   const carbonKg = totalCarbonSavedKg(purchased);
@@ -23,7 +37,8 @@ export default function ConsumerDashboard() {
       <Navbar />
       <div className="max-w-6xl mx-auto px-6 pt-24 pb-12">
 
-        <div className="rounded-3xl p-10 text-white mb-8 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f2040 100%)', border: '1px solid rgba(59,130,246,0.2)' }}>
+        <div className="rounded-3xl p-10 text-white mb-8 relative overflow-hidden"
+          style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f2040 100%)', border: '1px solid rgba(59,130,246,0.2)' }}>
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
           <h1 className="text-4xl font-black tracking-tight mb-2 relative z-10">Consumer Dashboard</h1>
           <p className="text-blue-200 text-lg relative z-10">Track your purchases and environmental contributions.</p>
@@ -37,9 +52,7 @@ export default function ConsumerDashboard() {
             { label: 'Energy Saved', value: `${(energyKwh / 1000).toFixed(2)} MWh`, icon: <Zap className="h-5 w-5" />, color: 'text-amber-400', bg: 'rgba(245,158,11,0.1)' },
           ].map(s => (
             <div key={s.label} className="cwi-auth-card rounded-2xl p-5 flex items-center gap-4">
-              <div className="p-3 rounded-full" style={{ background: s.bg }}>
-                <span className={s.color}>{s.icon}</span>
-              </div>
+              <div className="p-3 rounded-full" style={{ background: s.bg }}><span className={s.color}>{s.icon}</span></div>
               <div>
                 <p className="text-xs text-zinc-500 font-medium">{s.label}</p>
                 <p className="text-xl font-bold text-white">{s.value}</p>
@@ -55,18 +68,9 @@ export default function ConsumerDashboard() {
               <h2 className="font-bold text-white">Your ESG Impact</h2>
             </div>
             <div className="grid grid-cols-3 gap-6 text-center">
-              <div>
-                <div className="text-3xl font-black text-emerald-400">{(weightKg / 1000).toFixed(3)}</div>
-                <div className="text-sm text-zinc-500 mt-1">Tonnes from landfill</div>
-              </div>
-              <div>
-                <div className="text-3xl font-black text-blue-400">{carbonKg.toFixed(1)}</div>
-                <div className="text-sm text-zinc-500 mt-1">kg CO₂ offset</div>
-              </div>
-              <div>
-                <div className="text-3xl font-black text-amber-400">{energyKwh.toFixed(1)}</div>
-                <div className="text-sm text-zinc-500 mt-1">kWh energy saved</div>
-              </div>
+              <div><div className="text-3xl font-black text-emerald-400">{(weightKg / 1000).toFixed(3)}</div><div className="text-sm text-zinc-500 mt-1">Tonnes from landfill</div></div>
+              <div><div className="text-3xl font-black text-blue-400">{carbonKg.toFixed(1)}</div><div className="text-sm text-zinc-500 mt-1">kg CO₂ offset</div></div>
+              <div><div className="text-3xl font-black text-amber-400">{energyKwh.toFixed(1)}</div><div className="text-sm text-zinc-500 mt-1">kWh energy saved</div></div>
             </div>
           </div>
         )}
@@ -97,10 +101,17 @@ export default function ConsumerDashboard() {
                       <span className="flex items-center gap-1 truncate"><MapPin className="h-3 w-3" />{l.delivery_address}</span>
                     )}
                   </div>
+                  <div className="text-xs text-zinc-600 mt-1">{new Date(l.purchased_at).toLocaleDateString()}</div>
                 </div>
-                <div className="text-right shrink-0">
-                  <div className="font-bold text-emerald-400">${parseFloat(l.price || 0).toLocaleString()}</div>
-                  <div className="text-xs text-zinc-600">{new Date(l.purchased_at).toLocaleDateString()}</div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-right">
+                    <div className="font-bold text-emerald-400">${parseFloat(l.price || 0).toLocaleString()}</div>
+                    <div className="text-xs px-2 py-0.5 rounded-full mt-1" style={{ background: 'rgba(16,185,129,0.1)', color: '#34d399' }}>purchased</div>
+                  </div>
+                  <button onClick={() => handleCancel(l.id)} title="Cancel purchase"
+                    className="p-2 rounded-xl text-zinc-500 hover:text-red-400 transition" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             ))}
