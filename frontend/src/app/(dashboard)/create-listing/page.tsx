@@ -63,7 +63,15 @@ export default function CreateListingPage() {
         company_name: formData.company_name, contact_number: formData.contact_number,
       }).catch(() => {});
     }
-    router.push('/marketplace');
+
+    // Redirect back to role-appropriate dashboard
+    const role = localStorage.getItem('user_role') || 'producer';
+    const ROLE_ROUTES: Record<string, string> = {
+      producer: '/producer',
+      contractor: '/producer',
+      recycler: '/dashboard/recycler',
+    };
+    router.push(ROLE_ROUTES[role] ?? '/producer');
   };
 
   return (
