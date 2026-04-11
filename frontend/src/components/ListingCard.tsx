@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getStore, setStore } from '@/lib/storage';
 import { Package, ArrowRight } from 'lucide-react';
 
@@ -24,8 +24,12 @@ const BUYER_ROLES = ['consumer', 'buyer', 'recycler'];
 
 export default function ListingCard({ listing }: { listing: any }) {
   const [status, setStatus] = useState(listing.status);
-  const role = typeof window !== 'undefined' ? localStorage.getItem('user_role') || '' : '';
-  const canBuy = BUYER_ROLES.includes(role);
+  const [canBuy, setCanBuy] = useState(false);
+
+  useEffect(() => {
+    const role = localStorage.getItem('user_role') || '';
+    setCanBuy(BUYER_ROLES.includes(role));
+  }, []);
 
   const markSold = () => {
     const soldAt = new Date().toISOString();
