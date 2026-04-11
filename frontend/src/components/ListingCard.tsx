@@ -40,10 +40,6 @@ export default function ListingCard({ listing }: { listing: any }) {
       all.map(l => l.id === listing.id ? { ...l, status: 'sold', sold_at: soldAt } : l)
     ));
 
-    // Update producer's scoped listings
-    const userListings = getStore<any[]>('user_listings', []);
-    setStore('user_listings', userListings.map(l => l.id === listing.id ? { ...l, status: 'sold' } : l));
-
     // Save to buyer's scoped purchased_listings
     const prev = getStore<any[]>('purchased_listings', []);
     prev.push({ ...listing, status: 'sold', purchased_at: soldAt, sold_at: soldAt });

@@ -51,18 +51,17 @@ export default function ListingDetailPage() {
     if (!address.street || !address.city || !address.state || !address.zip) return;
     const deliveryAddress = `${address.street}, ${address.city}, ${address.state} ${address.zip}`;
 
-    // Mark listing sold in global listings store
+    // Mark listing sold in global listings store with sold_at timestamp
+    const soldAt = new Date().toISOString();
     const allListings: any[] = JSON.parse(localStorage.getItem('all_listings') || '[]');
     localStorage.setItem('all_listings', JSON.stringify(
-      allListings.map((l: any) => l.id === listing.id ? { ...l, status: 'sold' } : l)
+      allListings.map((l: any) => l.id === listing.id ? { ...l, status: 'sold', sold_at: soldAt } : l)
     ));
-    // Also mark in user's own listings if they own it
-    const userListings = getStore<any[]>('user_listings', []);
-    setStore('user_listings', userListings.map((l: any) => l.id === listing.id ? { ...l, status: 'sold' } : l));
+    // NOTE: Do NOT touch user_listings here — that belongs to the producer only
 
     // Save to THIS user's purchased_listings
     const prev = getStore<any[]>('purchased_listings', []);
-    prev.push({ ...listing, status: 'sold', purchased_at: new Date().toISOString(), delivery_address: deliveryAddress });
+    prev.push({ ...listing, status: 'sold', purchased_at: soldAt, sold_at: soldAt, delivery_address: deliveryAddress });
     setStore('purchased_listings', prev);
 
     // Add to global logistics jobs pool (shared across drivers)
