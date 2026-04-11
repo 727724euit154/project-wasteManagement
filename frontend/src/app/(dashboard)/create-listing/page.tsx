@@ -3,9 +3,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createListing } from '@/services/api';
 import { getStore, setStore } from '@/lib/storage';
+import { useUser } from '@/lib/UserContext';
 
 export default function CreateListingPage() {
   const router = useRouter();
+  const { role } = useUser();
   const [formData, setFormData] = useState({
     title: '', description: '',
     latitude: 40.7128, longitude: -74.0060,
@@ -65,7 +67,6 @@ export default function CreateListingPage() {
     }
 
     // Redirect back to role-appropriate dashboard
-    const role = localStorage.getItem('user_role') || 'producer';
     const ROLE_ROUTES: Record<string, string> = {
       producer: '/producer',
       contractor: '/producer',

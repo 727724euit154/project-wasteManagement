@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { register, login } from '@/services/api';
+import { useUser } from '@/lib/UserContext';
 import Link from 'next/link';
 
 const ROLES = [
@@ -20,6 +21,7 @@ const ROLE_ROUTES: Record<string, string> = {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { setUser } = useUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('producer');
@@ -30,8 +32,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    localStorage.setItem('user_role', role);
-    localStorage.setItem('user_email', email);
+    setUser(role, email);
     try {
       await register({ email, password });
       const res = await login({ email, password });
