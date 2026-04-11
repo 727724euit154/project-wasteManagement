@@ -133,7 +133,7 @@ def upgrade() -> None:
     op.execute('''
     CREATE TABLE waste_passports (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        listing_id UUID REFERENCES listings(id) UNIQUE ON DELETE RESTRICT,
+        listing_id UUID UNIQUE REFERENCES listings(id) ON DELETE RESTRICT,
         origin_id UUID REFERENCES users(id) ON DELETE RESTRICT,
         destination_id UUID REFERENCES users(id) ON DELETE RESTRICT,
         logistics_request_id UUID REFERENCES logistics_requests(id) ON DELETE RESTRICT,
