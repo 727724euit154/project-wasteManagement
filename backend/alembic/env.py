@@ -6,7 +6,6 @@ from alembic import context
 from app.db.base_class import Base
 from app.models.schema import *
 
-# this is the Alembic Config object
 config = context.config
 
 if config.config_file_name is not None:
@@ -14,8 +13,20 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+def get_url():
+    # Priority 1: -x db_url=... passed via CLI
+    x_args = context.get_x_argument(as_dictionary=True)
+    if x_args.get("db_url"):
+        return x_args["db_url"]
+    # Priority 2: DATABASE_URL environment variable
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        return db_url
+    # Fallback: alembic.ini value
+    return config.get_main_option("sqlalchemy.url")
+
 def run_migrations_offline() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -26,10 +37,8 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 def run_migrations_online() -> None:
-    # Override with DATABASE_URL env var if set (Render, production)
-    db_url = os.environ.get("DATABASE_URL")
-    if db_url:
-        config.set_main_option("sqlalchemy.url", db_url)
+    url = get_url()
+    config.set_main_option("sqlalchemy.url", url)
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
