@@ -13,10 +13,11 @@ export default function DashboardPage() {
     const listings: any[] = JSON.parse(localStorage.getItem('user_listings') || '[]');
     setTotalListings(listings.length);
 
-    const purchased: any[] = JSON.parse(localStorage.getItem('purchased_listings') || '[]');
-    const revenue = purchased.reduce((sum: number, l: any) => sum + (parseFloat(l.price) || 0), 0);
+    // Revenue from producer's own sold listings — not purchases
+    const sold = listings.filter((l: any) => l.status === 'sold');
+    const revenue = sold.reduce((sum: number, l: any) => sum + (parseFloat(l.price) || 0), 0);
     setMaterialsSoldKg(revenue);
-    setCarbonSavedKg(totalCarbonSavedKg(purchased));
+    setCarbonSavedKg(totalCarbonSavedKg(sold));
   }, []);
 
   return (

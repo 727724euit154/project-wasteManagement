@@ -13,12 +13,22 @@ export default function EnvironmentalImpactDashboard() {
   const [circularityScore, setCircularityScore] = useState(0);
 
   useEffect(() => {
-    const purchased: any[] = JSON.parse(localStorage.getItem('purchased_listings') || '[]');
+    const role = localStorage.getItem('user_role') || '';
     const allListings: any[] = JSON.parse(localStorage.getItem('user_listings') || '[]');
 
-    const weightKg = totalWeightKg(purchased);
-    const carbonKg = totalCarbonSavedKg(purchased);
-    const energyKwh = totalEnergySavedKwh(purchased);
+    // Producers: ESG based on their sold listings (materials they diverted)
+    // Consumers/recyclers: ESG based on what they purchased
+    let sourceListing: any[];
+    if (role === 'producer' || role === 'contractor') {
+      sourceListing = allListings.filter(l => l.status === 'sold');
+    } else {
+      const purchased: any[] = JSON.parse(localStorage.getItem('purchased_listings') || '[]');
+      sourceListing = purchased;
+    }
+
+    const weightKg = totalWeightKg(sourceListing);
+    const carbonKg = totalCarbonSavedKg(sourceListing);
+    const energyKwh = totalEnergySavedKwh(sourceListing);
 
     setSummary({
       waste_reused_tons: weightKg / 1000,
@@ -27,9 +37,8 @@ export default function EnvironmentalImpactDashboard() {
       energy_saved_mwh: energyKwh / 1000,
     });
 
-    // Build material breakdown from real weight_kg per listing
     const materialTotals: Record<string, number> = {};
-    purchased.forEach(l => {
+    sourceListing.forEach(l => {
       const mat = l.materials?.[0]?.type ?? detectMaterialKey(l);
       const w = getWeightKg(l);
       if (w > 0) materialTotals[mat] = (materialTotals[mat] || 0) + w;
@@ -43,11 +52,10 @@ export default function EnvironmentalImpactDashboard() {
       if (token) getMaterialBreakdown().then(res => setBreakdown(res.data)).catch(() => {});
     }
 
-    // Circularity score: % of all listed materials that were sold and had weight data
     const totalListed = allListings.length;
     const soldWithWeight = allListings.filter(l => l.status === 'sold' && getWeightKg(l) > 0).length;
     const base = totalListed > 0 ? Math.round((soldWithWeight / totalListed) * 60) + 30 : 0;
-    setCircularityScore(Math.min(base + (purchased.length > 0 ? 10 : 0), 100));
+    setCircularityScore(Math.min(base + (sourceListing.length > 0 ? 10 : 0), 100));
   }, []);
 
   const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'];
