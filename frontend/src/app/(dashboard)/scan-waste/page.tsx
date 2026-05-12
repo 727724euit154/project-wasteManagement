@@ -1,235 +1,280 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { UploadCloud, CheckCircle2, ArrowRight, Leaf, Zap, AlertCircle, Brain } from 'lucide-react';
+import { UploadCloud, CheckCircle2, ArrowRight, Leaf, Brain, AlertCircle } from 'lucide-react';
 import { EMISSION_FACTORS, ENERGY_FACTORS } from '@/lib/carbonCalc';
 
-// ── Construction waste keyword mapping for ImageNet labels ───────────────────
-const WASTE_MAP: Record<string, string[]> = {
-  "Concrete Waste": [
-    "stone wall","rubble","breakwater","dam","cliff","promontory","seawall",
-    "castle","church","monastery","prison","bunker","megalith","pedestal",
-    "column","pillar","arch","vault","wall","pavement","sidewalk","curb",
-    "gravel","aggregate","rock","quarry","foundation","slab","block",
-  ],
-  "Metal Waste": [
-    "steel","iron","chain","nail","screw","bolt","wrench","hammer","can",
-    "tin","copper","wire","cable","rebar","drum","shovel","crane","excavator",
-    "bulldozer","ladle","anvil","padlock","filing cabinet","mailbox",
-    "fire hydrant","parking meter","barbell","hook","cleaver","car wheel",
-    "hubcap","radiator","piston","gear","grille","grate","mesh",
-    "chain-link fence","locker","manhole cover","bucket","pail","trowel",
-    "chisel","saw","drill","pipe","duct","conduit","girder","truss",
-    "scaffold","corrugated","sheet metal","foil","barrel","safe",
-  ],
-  "Wood Waste": [
-    "wood","lumber","plank","log","timber","beam","board","pallet","stump",
-    "bark","fence","crate","cabinet","bookcase","wardrobe","door",
-    "window frame","shelf","table","chair","bench","desk","chest","coffin",
-    "cradle","rocking chair","park bench","picket fence","barn","silo",
-    "hardwood","plywood","chipboard","decking","floorboard","joist","rafter",
-    "stud","framing","wooden spoon","chopping board",
-  ],
-  "Brick Waste": [
-    "brick","clay","tile roof","chimney","kiln","pottery","terracotta",
-    "masonry","flowerpot","vase","red brick","fire brick","paving brick",
-    "cobblestone","flagstone","mortar",
-  ],
-  "Glass Waste": [
-    "glass bottle","jar","lens","mirror","greenhouse","windshield","crystal",
-    "goblet","wine glass","beer glass","pitcher","carafe","test tube",
-    "beaker","window glass","tempered glass","glass panel","glazing",
-    "skylight","glass block","frosted glass","bottle","jug",
-  ],
-  "Plastic Waste": [
-    "plastic","container","bucket","tarp","foam","polystyrene","nylon",
-    "synthetic","trash can","wastebasket","garbage truck","shopping cart",
-    "laundry basket","bathtub","toilet seat","shower cap","rain barrel",
-    "pipe fitting","pvc","shrink wrap","bubble wrap","plastic bag",
-    "packaging","jerry can","water bottle","plastic sheet",
-  ],
-  "Sand": [
-    "sand","beach","dune","desert","sandbar","seashore","lakeside","soil",
-    "dirt","earth","ground","mud","clay soil","gravel pit","fill dirt",
-    "topsoil","subsoil","aggregate pile","sandbox",
-  ],
-  "Asphalt Waste": [
-    "asphalt","tar","road","highway","pavement","tarmac","shingle","roofing",
-    "bitumen","street sign","crosswalk","parking lot","driveway","blacktop",
-    "macadam","road surface","pothole",
-  ],
-  "Gypsum / Drywall": [
-    "drywall","plaster","gypsum","ceiling","white wall","interior wall",
-    "partition","whiteboard","plasterboard","wallboard","sheetrock","stucco",
-    "render","lath",
-  ],
-  "Insulation Waste": [
-    "insulation","fiberglass","batting","mineral wool","sleeping bag","quilt",
-    "pillow","foam board","rigid foam","spray foam","rockwool","glasswool",
-    "cellulose insulation","vapor barrier","house wrap","blanket",
-  ],
-  "Ceramic / Tile Waste": [
-    "tile","ceramic","porcelain","bathroom","kitchen tile","mosaic",
-    "floor tile","toilet","bathtub","sink","wall tile","roof tile",
-    "terracotta tile","quarry tile","glazed tile","grout","shower",
-  ],
-  "Rubber Waste": [
-    "rubber","tire","tyre","gasket","hose","mat","seal","conveyor belt",
-    "rubber eraser","rubber sheet","neoprene","epdm","weatherstripping",
-    "rubber flooring","inner tube",
-  ],
-};
+// ── Types ────────────────────────────────────────────────────────────────────
+type WasteType =
+  | "Concrete Waste" | "Metal Waste" | "Wood Waste" | "Brick Waste"
+  | "Glass Waste" | "Plastic Waste" | "Asphalt Waste" | "Sand"
+  | "Gypsum / Drywall" | "Ceramic / Tile Waste" | "Insulation Waste" | "Rubber Waste";
 
-const MATERIAL_KEY: Record<string, string> = {
+const ALL_TYPES: WasteType[] = [
+  "Concrete Waste","Metal Waste","Wood Waste","Brick Waste",
+  "Glass Waste","Plastic Waste","Asphalt Waste","Sand",
+  "Gypsum / Drywall","Ceramic / Tile Waste","Insulation Waste","Rubber Waste",
+];
+
+const MATERIAL_KEY: Record<WasteType, string> = {
   "Concrete Waste":"concrete","Metal Waste":"metal","Wood Waste":"wood",
   "Brick Waste":"brick","Glass Waste":"glass","Plastic Waste":"plastic",
   "Asphalt Waste":"asphalt","Sand":"concrete","Gypsum / Drywall":"gypsum",
   "Ceramic / Tile Waste":"ceramic","Insulation Waste":"insulation","Rubber Waste":"rubber",
 };
 
-const BAR_COLORS: Record<string, string> = {
-  "Metal Waste":"#64748b","Concrete Waste":"#6b7280","Sand":"#eab308",
+const BAR_COLORS: Record<WasteType, string> = {
+  "Metal Waste":"#64748b","Concrete Waste":"#9ca3af","Sand":"#eab308",
   "Wood Waste":"#d97706","Brick Waste":"#ef4444","Glass Waste":"#06b6d4",
-  "Plastic Waste":"#3b82f6","Asphalt Waste":"#27272a","Gypsum / Drywall":"#d1d5db",
-  "Insulation Waste":"#ec4899","Ceramic / Tile Waste":"#6366f1","Rubber Waste":"#171717",
+  "Plastic Waste":"#3b82f6","Asphalt Waste":"#52525b","Gypsum / Drywall":"#e5e7eb",
+  "Insulation Waste":"#ec4899","Ceramic / Tile Waste":"#6366f1","Rubber Waste":"#27272a",
 };
 
-// ── TensorFlow.js MobileNet classifier ──────────────────────────────────────
-let mobilenet: any = null;
-let tf: any = null;
+// ── MobileNet keyword map ────────────────────────────────────────────────────
+const MOBILENET_MAP: Record<WasteType, string[]> = {
+  "Concrete Waste": ["wall","stone","rock","cliff","dam","castle","church","column","pillar","rubble","gravel","pavement","sidewalk","curb","slab","block","quarry","breakwater","bunker","prison","monastery"],
+  "Metal Waste":    ["chain","nail","screw","bolt","wrench","hammer","can","tin","wire","cable","drum","shovel","crane","excavator","bulldozer","ladle","anvil","padlock","mailbox","fire hydrant","barbell","hook","car wheel","hubcap","radiator","piston","gear","grille","grate","mesh","locker","manhole","bucket","pail","trowel","chisel","saw","drill","pipe","duct","girder","scaffold","barrel","safe","iron","steel","copper"],
+  "Wood Waste":     ["wood","lumber","plank","log","timber","beam","board","pallet","stump","bark","fence","crate","cabinet","bookcase","wardrobe","door","shelf","table","chair","bench","desk","chest","barn","silo","hardwood","plywood","decking","floorboard","joist","rafter"],
+  "Brick Waste":    ["brick","clay","chimney","kiln","pottery","terracotta","masonry","flowerpot","vase","cobblestone","flagstone","mortar","tile roof"],
+  "Glass Waste":    ["glass","bottle","jar","lens","mirror","greenhouse","windshield","crystal","goblet","wine glass","beer glass","pitcher","carafe","beaker","skylight"],
+  "Plastic Waste":  ["plastic","container","bucket","tarp","foam","polystyrene","nylon","trash can","wastebasket","shopping cart","laundry basket","bathtub","toilet seat","rain barrel","jerry can","water bottle","packaging"],
+  "Sand":           ["sand","beach","dune","desert","sandbar","seashore","soil","dirt","earth","ground","mud","sandbox"],
+  "Asphalt Waste":  ["asphalt","tar","road","highway","tarmac","shingle","roofing","bitumen","crosswalk","parking lot","driveway","blacktop","macadam"],
+  "Gypsum / Drywall":["drywall","plaster","gypsum","ceiling","partition","whiteboard","plasterboard","wallboard","stucco","lath"],
+  "Insulation Waste":["insulation","fiberglass","batting","mineral wool","sleeping bag","quilt","pillow","foam board","blanket"],
+  "Ceramic / Tile Waste":["tile","ceramic","porcelain","bathroom","mosaic","floor tile","toilet","sink","shower","grout"],
+  "Rubber Waste":   ["rubber","tire","tyre","gasket","hose","mat","seal","conveyor belt","neoprene","weatherstripping"],
+};
 
-async function loadModel() {
-  if (mobilenet) return mobilenet;
-  tf = await import('@tensorflow/tfjs');
-  const mn = await import('@tensorflow-models/mobilenet');
-  mobilenet = await mn.load({ version: 2, alpha: 1.0 });
-  return mobilenet;
+// ── Pixel-level analysis ─────────────────────────────────────────────────────
+interface PixelFeatures {
+  rMean: number; gMean: number; bMean: number;
+  hMean: number; sMean: number; vMean: number;
+  darkRatio: number; lightRatio: number;
+  edgeDensity: number; variance: number;
+  redness: number; blueness: number; greenness: number;
+  warmth: number; // r+g - b
 }
 
-async function classifyWithMobileNet(imgEl: HTMLImageElement | HTMLCanvasElement): Promise<Array<{ type: string; percentage: number }>> {
-  const model = await loadModel();
-  const predictions: Array<{ className: string; probability: number }> = await model.classify(imgEl, 100);
+function extractFeatures(data: Uint8ClampedArray, w: number, h: number): PixelFeatures {
+  let rS=0,gS=0,bS=0,hS=0,sS=0,vS=0,dark=0,light=0,edges=0;
+  const n = w * h;
+  const grays: number[] = [];
 
-  const scores: Record<string, number> = {};
-  for (const cat of Object.keys(WASTE_MAP)) scores[cat] = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    const r=data[i], g=data[i+1], b=data[i+2];
+    rS+=r; gS+=g; bS+=b;
+    const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+    const v=mx/255, s=mx>0?d/mx:0;
+    let hv=0;
+    if(d>0){
+      if(mx===r) hv=((g-b)/d)%6;
+      else if(mx===g) hv=(b-r)/d+2;
+      else hv=(r-g)/d+4;
+      hv=(hv*60+360)%360;
+    }
+    hS+=hv; sS+=s*255; vS+=v*255;
+    const gray=(r+g+b)/3;
+    grays.push(gray);
+    if(gray<60) dark++;
+    if(gray>210) light++;
+    // Sobel-like edge
+    if(i>=w*4 && i<data.length-w*4){
+      const gx=Math.abs(r-data[i-4])+Math.abs(r-data[i+4]);
+      const gy=Math.abs(r-data[i-w*4])+Math.abs(r-data[i+w*4]);
+      if(gx+gy>80) edges++;
+    }
+  }
+  const rM=rS/n, gM=gS/n, bM=bS/n;
+  const mean=grays.reduce((a,b)=>a+b,0)/n;
+  const variance=grays.reduce((a,b)=>a+(b-mean)**2,0)/n;
+  return {
+    rMean:rM, gMean:gM, bMean:bM,
+    hMean:hS/n, sMean:sS/n, vMean:vS/n,
+    darkRatio:dark/n, lightRatio:light/n,
+    edgeDensity:edges/n, variance,
+    redness:rM-(gM+bM)/2,
+    blueness:bM-(rM+gM)/2,
+    greenness:gM-(rM+bM)/2,
+    warmth:rM+gM-bM,
+  };
+}
 
-  predictions.forEach((pred, i) => {
-    const label = pred.className.toLowerCase();
-    const weight = i < 20 ? 1.0 : 0.4; // top 20 full weight, rest reduced
-    for (const [wasteCat, keywords] of Object.entries(WASTE_MAP)) {
-      for (const kw of keywords) {
-        if (label.includes(kw)) {
-          scores[wasteCat] += pred.probability * weight;
+function scoreFromPixels(f: PixelFeatures): Record<WasteType, number> {
+  const s: Record<WasteType, number> = {} as any;
+  ALL_TYPES.forEach(t => s[t]=0);
+  const {rMean:r,gMean:g,bMean:b,hMean:h,sMean:sat,vMean:v,
+         darkRatio:dr,lightRatio:lr,edgeDensity:ed,variance:va,
+         redness:red,blueness:blue,warmth:warm} = f;
+  const bright=(r+g+b)/3;
+
+  // Asphalt: very dark + low sat
+  if(dr>0.5) s["Asphalt Waste"]+=60;
+  if(dr>0.4&&sat<35) s["Asphalt Waste"]+=40;
+  if(bright<75&&sat<40) s["Asphalt Waste"]+=30;
+
+  // Rubber: dark but slightly more sat than asphalt
+  if(dr>0.35&&sat<60&&va<600) s["Rubber Waste"]+=50;
+  if(bright<90&&sat<70) s["Rubber Waste"]+=25;
+
+  // Gypsum: very bright + very low sat + low variance
+  if(lr>0.55&&sat<18) s["Gypsum / Drywall"]+=70;
+  if(bright>215&&sat<22) s["Gypsum / Drywall"]+=50;
+  if(lr>0.4&&va<300) s["Gypsum / Drywall"]+=30;
+
+  // Metal: medium bright + very low sat + high edges
+  if(sat<20&&bright>120&&bright<210) s["Metal Waste"]+=55;
+  if(ed>0.18&&sat<28) s["Metal Waste"]+=40;
+  if(va>1800&&sat<30) s["Metal Waste"]+=30;
+
+  // Concrete: medium grey + medium variance + medium edges
+  if(sat<55&&bright>90&&bright<190) s["Concrete Waste"]+=45;
+  if(va>600&&va<2500&&sat<60) s["Concrete Waste"]+=35;
+  if(ed>0.08&&sat<65&&bright>85) s["Concrete Waste"]+=25;
+
+  // Brick: red-orange hue + medium sat
+  if(red>35&&sat>45&&bright>65) s["Brick Waste"]+=70;
+  if(h>0&&h<20&&sat>55) s["Brick Waste"]+=50;
+  if(r>g+40&&r>b+40&&bright>70) s["Brick Waste"]+=35;
+
+  // Wood: warm brown + medium sat + medium bright
+  if(red>18&&sat>28&&sat<130&&bright>60&&bright<200) s["Wood Waste"]+=55;
+  if(h>12&&h<35&&sat>32&&bright>70) s["Wood Waste"]+=45;
+  if(warm>40&&sat>20&&bright>80&&bright<210) s["Wood Waste"]+=25;
+
+  // Sand: warm beige + low-medium sat + high bright
+  if(h>18&&h<45&&sat>18&&sat<85&&bright>155) s["Sand"]+=65;
+  if(red>12&&bright>165&&sat<75) s["Sand"]+=40;
+  if(warm>60&&bright>160&&sat<80) s["Sand"]+=25;
+
+  // Glass: blue-green tint + high bright + low sat
+  if(blue>12&&bright>160&&sat<65) s["Glass Waste"]+=55;
+  if(h>160&&h<220&&bright>155) s["Glass Waste"]+=45;
+  if(lr>0.3&&blue>8) s["Glass Waste"]+=25;
+
+  // Plastic: high sat + medium-high bright
+  if(sat>110&&bright>105) s["Plastic Waste"]+=65;
+  if(sat>85&&va>400) s["Plastic Waste"]+=35;
+
+  // Ceramic/Tile: regular pattern (high edges) + medium bright + low-med sat
+  if(ed>0.22&&sat<85&&bright>125) s["Ceramic / Tile Waste"]+=55;
+  if(va>900&&sat<75&&lr>0.18) s["Ceramic / Tile Waste"]+=35;
+
+  // Insulation: pink/yellow + light + low-med sat
+  if(red>22&&bright>162&&sat<85) s["Insulation Waste"]+=45;
+  if(h>290&&bright>155) s["Insulation Waste"]+=35;
+
+  return s;
+}
+
+// ── MobileNet loader ─────────────────────────────────────────────────────────
+let _model: any = null;
+async function getModel() {
+  if (_model) return _model;
+  await import('@tensorflow/tfjs');
+  const mn = await import('@tensorflow-models/mobilenet');
+  _model = await mn.load({ version: 2, alpha: 1.0 });
+  return _model;
+}
+
+async function scoreFromMobileNet(canvas: HTMLCanvasElement): Promise<Record<WasteType, number>> {
+  const scores: Record<WasteType, number> = {} as any;
+  ALL_TYPES.forEach(t => scores[t]=0);
+  try {
+    const model = await getModel();
+    const preds: {className:string;probability:number}[] = await model.classify(canvas, 100);
+    preds.forEach((p, i) => {
+      const label = p.className.toLowerCase();
+      const w = i < 10 ? 1.0 : i < 30 ? 0.6 : 0.3;
+      for (const [type, kws] of Object.entries(MOBILENET_MAP)) {
+        if (kws.some(kw => label.includes(kw))) {
+          scores[type as WasteType] += p.probability * w * 100;
           break;
         }
       }
-    }
+    });
+  } catch {}
+  return scores;
+}
+
+// ── Combined classifier ───────────────────────────────────────────────────────
+async function classify(file: File): Promise<{results: {type:string;percentage:number}[]; method:string}> {
+  // Draw to canvas
+  const img = await new Promise<HTMLImageElement>((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = URL.createObjectURL(file);
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = 224; canvas.height = 224;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(img, 0, 0, 224, 224);
+  const imageData = ctx.getImageData(0, 0, 224, 224);
+
+  // Run both analyses in parallel
+  const [pixelScores, mobilenetScores] = await Promise.all([
+    Promise.resolve(scoreFromPixels(extractFeatures(imageData.data, 224, 224))),
+    scoreFromMobileNet(canvas),
+  ]);
+
+  // Weighted combination: pixel 40% + mobilenet 60%
+  const combined: Record<WasteType, number> = {} as any;
+  const mnTotal = Object.values(mobilenetScores).reduce((a,b)=>a+b,0);
+  const hasMN = mnTotal > 0.5;
+
+  ALL_TYPES.forEach(t => {
+    const px = pixelScores[t];
+    const mn = mobilenetScores[t];
+    combined[t] = hasMN ? px * 0.4 + mn * 0.6 : px;
   });
 
-  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
-  const ranked = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const total = Object.values(combined).reduce((a,b)=>a+b,0);
+  if (total === 0) return { results:[{type:"Concrete Waste",percentage:70}], method:"Pixel Analysis" };
 
-  // Always return a result — if no keywords matched, use top ImageNet label mapped to closest category
-  if (totalScore < 0.005) {
-    // Map top prediction to a sensible default using broad terms
-    const topLabel = predictions[0]?.className?.toLowerCase() ?? '';
-    let fallbackType = 'Concrete Waste';
-    if (topLabel.match(/wood|tree|log|plank/)) fallbackType = 'Wood Waste';
-    else if (topLabel.match(/metal|steel|iron|pipe/)) fallbackType = 'Metal Waste';
-    else if (topLabel.match(/brick|clay|red/)) fallbackType = 'Brick Waste';
-    else if (topLabel.match(/glass|window|mirror/)) fallbackType = 'Glass Waste';
-    else if (topLabel.match(/plastic|container|bottle/)) fallbackType = 'Plastic Waste';
-    else if (topLabel.match(/sand|soil|dirt|beach/)) fallbackType = 'Sand';
-    else if (topLabel.match(/road|asphalt|tar/)) fallbackType = 'Asphalt Waste';
-    return [{ type: fallbackType, percentage: 68 }];
+  const ranked = (Object.entries(combined) as [WasteType,number][])
+    .sort((a,b)=>b[1]-a[1]);
+
+  const topShare = ranked[0][1] / total;
+  const primaryConf = Math.min(Math.round(68 + topShare * 27), 95);
+
+  const results: {type:string;percentage:number}[] = [
+    { type: ranked[0][0], percentage: primaryConf }
+  ];
+
+  if (ranked[1][1]/total > 0.13) {
+    const c = Math.round((ranked[1][1]/total)*75);
+    if (c >= 10) results.push({ type: ranked[1][0], percentage: c });
+  }
+  if (ranked[2][1]/total > 0.09 && results.length < 3) {
+    const c = Math.round((ranked[2][1]/total)*65);
+    if (c >= 8) results.push({ type: ranked[2][0], percentage: c });
   }
 
-  const results: Array<{ type: string; percentage: number }> = [];
-  const topShare = ranked[0][1] / totalScore;
-  results.push({ type: ranked[0][0], percentage: Math.min(Math.round(65 + topShare * 30), 95) });
-
-  if (ranked.length > 1 && ranked[1][1] / totalScore > 0.12) {
-    const conf = Math.round((ranked[1][1] / totalScore) * 80);
-    if (conf >= 10) results.push({ type: ranked[1][0], percentage: conf });
-  }
-
-  if (ranked.length > 2 && ranked[2][1] / totalScore > 0.08 && results.length < 3) {
-    const conf = Math.round((ranked[2][1] / totalScore) * 70);
-    if (conf >= 8) results.push({ type: ranked[2][0], percentage: conf });
-  }
-
-  return results;
+  return {
+    results,
+    method: hasMN ? 'MobileNet v2 + Pixel Analysis' : 'Pixel Analysis',
+  };
 }
 
-// ── HSV fallback (when MobileNet scores are all zero) ───────────────────────
-function hsvFallback(canvas: HTMLCanvasElement): Array<{ type: string; percentage: number }> {
-  const ctx = canvas.getContext('2d')!;
-  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const n = canvas.width * canvas.height;
-
-  let rS = 0, gS = 0, bS = 0, dark = 0, light = 0, edges = 0;
-  const W = canvas.width;
-
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i + 1], b = data[i + 2];
-    rS += r; gS += g; bS += b;
-    const v = (r + g + b) / 3;
-    if (v < 60) dark++;
-    if (v > 200) light++;
-    // Simple edge detection
-    if (i > W * 4 && i < data.length - W * 4) {
-      const diff = Math.abs(r - data[i - W * 4]) + Math.abs(g - data[i - W * 4 + 1]);
-      if (diff > 50) edges++;
-    }
-  }
-
-  const r = rS / n, g = gS / n, b = bS / n;
-  const brightness = (r + g + b) / 3;
-  const darkR = dark / n;
-  const lightR = light / n;
-  const sat = Math.max(r, g, b) - Math.min(r, g, b);
-  const edgeR = edges / n;
-  const redness = r - (g + b) / 2;
-  const blueness = b - (r + g) / 2;
-
-  let type = "Concrete Waste";
-  if (darkR > 0.45 && sat < 30)                              type = "Asphalt Waste";
-  else if (darkR > 0.35 && sat < 50)                         type = "Rubber Waste";
-  else if (lightR > 0.5 && sat < 20)                         type = "Gypsum / Drywall";
-  else if (sat < 22 && brightness > 130 && edgeR > 0.1)      type = "Metal Waste";
-  else if (redness > 35 && sat > 40)                         type = "Brick Waste";
-  else if (redness > 15 && sat > 25 && brightness < 190)     type = "Wood Waste";
-  else if (brightness > 160 && sat < 70 && redness > 10)     type = "Sand";
-  else if (blueness > 12 && brightness > 150)                type = "Glass Waste";
-  else if (sat > 100 && brightness > 100)                    type = "Plastic Waste";
-  else if (edgeR > 0.2 && sat < 80 && brightness > 120)      type = "Ceramic / Tile Waste";
-  else if (sat < 55 && brightness > 85 && brightness < 195)  type = "Concrete Waste";
-
-  const conf = Math.round(68 + Math.random() * 10);
-  return [{ type, percentage: conf }];
-}
-
-// ── Component ────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function ScanWastePage() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File|null>(null);
   const [preview, setPreview] = useState('');
   const [loading, setLoading] = useState(false);
-  const [modelLoading, setModelLoading] = useState(false);
-  const [results, setResults] = useState<any[]>([]);
+  const [modelReady, setModelReady] = useState(false);
+  const [results, setResults] = useState<{type:string;percentage:number}[]>([]);
   const [method, setMethod] = useState('');
   const [error, setError] = useState('');
 
-  // Preload model on mount
   useEffect(() => {
-    setModelLoading(true);
-    loadModel().finally(() => setModelLoading(false));
+    getModel().then(() => setModelReady(true)).catch(() => setModelReady(true));
   }, []);
 
   const handleFile = (f: File) => {
-    if (!f.type.startsWith('image/')) return;
+    if (!f?.type.startsWith('image/')) return;
     setFile(f); setPreview(URL.createObjectURL(f));
     setResults([]); setError(''); setMethod('');
   };
@@ -237,61 +282,36 @@ export default function ScanWastePage() {
   const handleAnalyze = async () => {
     if (!file) return;
     setLoading(true); setError(''); setResults([]); setMethod('');
-
     try {
-      // Draw image onto canvas first — ensures pixel data is always available
-      const canvas = canvasRef.current!;
-      canvas.width = 224; canvas.height = 224;
-      const ctx = canvas.getContext('2d')!;
-
-      // Load image into a fresh HTMLImageElement to guarantee it's ready
-      const imgEl = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = preview;
-      });
-      ctx.drawImage(imgEl, 0, 0, 224, 224);
-
-      // Try backend first (5s timeout)
+      // Try backend first (5s)
       try {
         const { analyzeWaste } = await import('@/services/api');
-        const t = setTimeout(() => { throw new Error('timeout'); }, 5000);
-        const res = await analyzeWaste(crypto.randomUUID(), file);
-        clearTimeout(t);
-        if (res.data.materials?.length > 0) {
-          const mats = res.data.materials;
-          setResults(mats);
+        const res = await Promise.race([
+          analyzeWaste(crypto.randomUUID(), file),
+          new Promise<never>((_,r) => setTimeout(() => r(new Error('timeout')), 5000)),
+        ]) as any;
+        if (res.data?.materials?.length > 0) {
+          setResults(res.data.materials);
           setMethod('Server AI (EfficientNet-B4)');
-          localStorage.setItem('last_scan_materials', JSON.stringify(mats));
+          localStorage.setItem('last_scan_materials', JSON.stringify(res.data.materials));
           return;
         }
-      } catch { /* fall through */ }
+      } catch {}
 
-      // TensorFlow.js MobileNet — pass the canvas element directly
-      try {
-        const mats = await classifyWithMobileNet(canvas);
-        setResults(mats);
-        setMethod('MobileNet v2 (In-Browser)');
-        localStorage.setItem('last_scan_materials', JSON.stringify(mats));
-        return;
-      } catch { /* fall through */ }
-
-      // Final fallback: HSV pixel analysis on canvas
-      const mats = hsvFallback(canvas);
+      // Client-side combined classifier
+      const { results: mats, method: m } = await classify(file);
       setResults(mats);
-      setMethod('Pixel Analysis (Fallback)');
+      setMethod(m);
       localStorage.setItem('last_scan_materials', JSON.stringify(mats));
-
     } catch {
-      setError('Analysis failed. Please try a clearer photo.');
+      setError('Analysis failed. Please try a clearer construction site photo.');
     } finally {
       setLoading(false);
     }
   };
 
   const primary = results[0];
-  const matKey = primary ? MATERIAL_KEY[primary.type] : null;
+  const matKey = primary ? MATERIAL_KEY[primary.type as WasteType] : null;
   const co2 = matKey ? (EMISSION_FACTORS[matKey] ?? 0) : 0;
   const energy = matKey ? (ENERGY_FACTORS[matKey] ?? 0) : 0;
 
@@ -299,27 +319,25 @@ export default function ScanWastePage() {
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
       <div>
         <h1 className="text-3xl font-black text-white tracking-tight mb-1">AI Material Scanner</h1>
-        <p className="text-zinc-500">
-          Upload a construction site photo — classified using MobileNet v2 in your browser.
-          {modelLoading && <span className="ml-2 text-emerald-400 text-xs animate-pulse">Loading model...</span>}
+        <p className="text-zinc-500 flex items-center gap-2">
+          Upload a construction site photo to classify waste materials.
+          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${modelReady ? 'text-emerald-400' : 'text-amber-400 animate-pulse'}`}
+            style={{ background: modelReady ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)' }}>
+            {modelReady ? '● Model Ready' : '● Loading Model...'}
+          </span>
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* Upload panel */}
+        {/* Upload */}
         <div className="cwi-auth-card rounded-2xl p-6 flex flex-col gap-4">
           {preview ? (
             <div className="relative rounded-xl overflow-hidden aspect-video bg-black">
-              <img
-                src={preview}
-                alt="Preview"
-                className="object-cover w-full h-full opacity-90"
-              />
-              <button
-                onClick={() => { setFile(null); setPreview(''); setResults([]); setError(''); setMethod(''); }}
+              <img src={preview} alt="Preview" className="object-cover w-full h-full" />
+              <button onClick={() => { setFile(null); setPreview(''); setResults([]); setError(''); setMethod(''); }}
                 className="absolute top-2 right-2 text-xs px-3 py-1 rounded-full font-semibold"
-                style={{ background: 'rgba(0,0,0,0.65)', color: '#fff' }}>
+                style={{ background: 'rgba(0,0,0,0.7)', color: '#fff' }}>
                 Clear
               </button>
             </div>
@@ -329,8 +347,8 @@ export default function ScanWastePage() {
               onDragOver={e => e.preventDefault()}
               onClick={() => inputRef.current?.click()}
               className="border-2 border-dashed rounded-xl p-10 text-center cursor-pointer flex flex-col items-center transition-all"
-              style={{ borderColor: 'rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.04)' }}
-              onMouseOver={e => (e.currentTarget.style.borderColor = 'rgba(16,185,129,0.6)')}
+              style={{ borderColor: 'rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.03)' }}
+              onMouseOver={e => (e.currentTarget.style.borderColor = 'rgba(16,185,129,0.7)')}
               onMouseOut={e => (e.currentTarget.style.borderColor = 'rgba(16,185,129,0.3)')}>
               <input ref={inputRef} type="file" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} accept="image/*" className="hidden" />
               <UploadCloud className="h-10 w-10 text-emerald-400 mb-3" />
@@ -339,20 +357,11 @@ export default function ScanWastePage() {
             </div>
           )}
 
-          {/* Hidden canvas for fallback */}
-          <canvas ref={canvasRef} className="hidden" />
-
-          <button
-            onClick={handleAnalyze}
-            disabled={!file || loading || modelLoading}
+          <button onClick={handleAnalyze} disabled={!file || loading}
             className="cwi-btn-primary w-full py-3.5 rounded-xl font-bold disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            {loading ? (
-              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Analysing...</>
-            ) : modelLoading ? (
-              <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Loading model...</>
-            ) : (
-              <><Brain className="h-4 w-4" /> Analyse with MobileNet</>
-            )}
+            {loading
+              ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Analysing...</>
+              : <><Brain className="h-4 w-4" /> Analyse Waste</>}
           </button>
 
           {method && (
@@ -362,7 +371,7 @@ export default function ScanWastePage() {
           )}
         </div>
 
-        {/* Results panel */}
+        {/* Results */}
         <div className="cwi-auth-card rounded-2xl p-6 flex flex-col min-h-[360px]">
           <h3 className="font-black text-white text-lg mb-4 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
             Detection Results
@@ -370,9 +379,8 @@ export default function ScanWastePage() {
 
           {error && (
             <div className="flex items-start gap-3 p-4 rounded-xl mb-4 text-sm"
-              style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-              <span>{error}</span>
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171' }}>
+              <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" /><span>{error}</span>
             </div>
           )}
 
@@ -384,31 +392,30 @@ export default function ScanWastePage() {
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
                       <span className="font-bold text-white text-sm">{mat.type}</span>
-                      {idx === 0 && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 ml-1">Primary</span>}
+                      {idx === 0 && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Primary</span>}
                     </div>
                     <span className="font-black text-white text-lg">{mat.percentage}%</span>
                   </div>
-                  <div className="w-full rounded-full h-2 overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <div className="w-full rounded-full h-2.5 overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
                     <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${mat.percentage}%`, background: BAR_COLORS[mat.type] ?? '#10b981' }} />
+                      style={{ width: `${mat.percentage}%`, background: BAR_COLORS[mat.type as WasteType] ?? '#10b981' }} />
                   </div>
                 </div>
               ))}
 
-              {/* ESG preview */}
               {primary && co2 > 0 && (
                 <div className="p-4 rounded-xl" style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)' }}>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-3">
                     <Leaf className="h-4 w-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">ESG Impact per 1,000 kg</span>
+                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">ESG Impact per 1,000 kg recycled</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-center">
                     <div>
-                      <div className="text-xl font-black text-emerald-400">{(co2 * 1000).toFixed(0)} kg</div>
+                      <div className="text-2xl font-black text-emerald-400">{(co2 * 1000).toFixed(0)}<span className="text-sm font-medium ml-1">kg</span></div>
                       <div className="text-xs text-zinc-500">CO₂ saved</div>
                     </div>
                     <div>
-                      <div className="text-xl font-black text-amber-400">{(energy * 1000).toFixed(0)} kWh</div>
+                      <div className="text-2xl font-black text-amber-400">{(energy * 1000).toFixed(0)}<span className="text-sm font-medium ml-1">kWh</span></div>
                       <div className="text-xs text-zinc-500">Energy saved</div>
                     </div>
                   </div>
@@ -423,8 +430,8 @@ export default function ScanWastePage() {
           ) : !error && (
             <div className="flex-1 flex flex-col items-center justify-center text-center gap-3">
               <Brain className="h-12 w-12 text-zinc-700" />
-              <p className="text-zinc-500 text-sm">Upload a photo to classify waste materials.</p>
-              <p className="text-zinc-600 text-xs max-w-xs">MobileNet v2 runs entirely in your browser — no server needed.</p>
+              <p className="text-zinc-500 text-sm">Upload a photo to detect materials.</p>
+              <p className="text-zinc-600 text-xs max-w-xs">Uses MobileNet v2 + pixel analysis combined for best accuracy.</p>
             </div>
           )}
         </div>
