@@ -33,7 +33,6 @@ app.include_router(api_router, prefix="/api/v1")
 
 @app.get("/health")
 def health_check():
-    # Simple health check without database dependency for demo mode
     return {"status": "healthy", "service": "online"}
 
 @app.get("/")
